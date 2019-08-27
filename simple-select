@@ -1,0 +1,19 @@
+SELECT p.LastName, p.FirstName, COUNT(PatientID)/2 AS ExamCount
+FROM Physicians p
+	INNER JOIN (
+		SELECT DISTINCT e.PatientID, e.ExamDate, e.InterpretingPhysicianID1
+		FROM Exam e
+			INNER JOIN ExamProcedures ep
+				ON e.DatabaseID = ep.DatabaseID
+					AND e.PatientID = ep.PatientID
+					AND e.ExamDate = ep.ExamDate
+					AND e.VisitNumber = ep.VisitNumber
+		WHERE e.ExamDate BETWEEN '20170101' AND '20181231'
+			AND e.ExamType IN (2,3)
+			AND ep.ExamTypeID IN (44,45,47,48,49,50,51,52)
+			AND e.AssignedEGA LIKE '%[0-9]%'
+			AND CAST(SUBSTRING(e.AssignedEGA, 0, CHARINDEX(' ', e.AssignedEGA)) AS INT) >= 28
+		) e
+		ON e.InterpretingPhysicianID1 = p.PhysicianID
+ GROUP BY p.LastName, p.FirstName
+ ORDER BY p.LastName, p.FirstName
