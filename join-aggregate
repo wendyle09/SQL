@@ -1,3 +1,4 @@
+-- Retrieve the average annual number of radiology exams read by each provider
 SELECT p.LastName, p.FirstName, COUNT(PatientID)/2 AS ExamCount
 FROM Physicians p
 	INNER JOIN (
