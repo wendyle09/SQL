@@ -1,0 +1,41 @@
+-- Create new table for patients who have an appointment within 4 weeks after go-live
+IF OBJECT_ID('C_PatientPool', 'U') IS NOT NULL DROP TABLE C_PatientPool
+SELECT a.OwnerId, MAX(a.ApptStart) AS LatestAppt
+INTO C_PatientPool
+FROM Appointments a
+   INNER JOIN C_PatientProfile_All p
+      ON a.OwnerId = p.PatientProfileId
+WHERE a.ApptKind = 1
+   AND a.Canceled IS NULL
+   AND a.ApptStart >= '5/14/2018' AND a.ApptStart < '6/11/2018'
+   AND a.ResourceId NOT IN
+   (
+      SELECT DoctorFacilityId
+      FROM DoctorFacility
+      where ListName like '%Ultrasound%'
+   )
+   AND a.ApptTypeId NOT IN
+   (
+      SELECT ApptTypeId
+      FROM ApptType
+      where Name LIKE '%Ultrasound [0-9][0-9]'
+         OR Name LIKE 'Phlebotomy [0-9][0-9]'
+         OR Name IN ('NWP GeneticConsult', 'Amnio Procedure', 'FYI MD to GC')
+   )
+group by OwnerId
+
+-- Create temporary table of pregnant patients that qualify for conversion
+IF OBJECT_ID('C_PatientProfile_Pregnant', 'U') IS NOT NULL DROP TABLE C_PatientProfile_Pregnant
+SELECT pp.*
+INTO C_PatientProfile_Pregnant
+FROM FutureDeliveries fd 
+   INNER JOIN C_PatientProfile_All pp
+      ON fd.patient_profile_id = pp.PatientProfileId
+
+-- Add currently pregnant patients that qualify for conversion that don't have an appointment within scope
+INSERT INTO C_PatientPool (OwnerId)
+SELECT preg.PatientProfileId
+FROM C_PatientProfile_Pregnant preg
+   LEFT JOIN C_PatientPool prio
+      ON preg.PatientProfileId = prio.ownerid
+WHERE prio.OwnerId IS NULL
